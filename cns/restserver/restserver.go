@@ -933,6 +933,23 @@ func (service *HTTPRestService) createOrUpdateNetworkContainer(w http.ResponseWr
 					break
 				}
 			}
+		} else if req.NetworkContainerType == cns.AzureContainerInstance {
+
+			// try to get the saved nc state if it exists
+			service.lock.Lock()
+			existing, ok := service.state.ContainerStatus[req.NetworkContainerid]
+			service.lock.Unlock()
+
+			// create/update nc only if it doesn't exist or it exists and the requested version is different from the saved version
+			if ok && existing.VMVersion != req.Version {
+
+				nc := service.networkContainer
+				if err = nc.Update(req); err != nil {
+					returnMessage = fmt.Sprintf("[Azure CNS] Error. CreateOrUpdateNetworkContainer failed %v", err.Error())
+					returnCode = UnexpectedError
+					break
+				}
+			}
 		}
 
 		returnCode, returnMessage = service.saveNetworkContainerGoalState(req)
